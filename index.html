@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f7f8fc">
+<title>阅读记单词</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#202536;--muted:#737b8d;--line:#e8eaf1;--accent:#6558d3;--red:#d94848;--green:#16865d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.8 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2}
+.top{max-width:900px;margin:auto;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-weight:800;font-size:19px}.brand span{color:var(--accent)}.sub{font-size:12px;color:var(--muted)}
+main{max-width:900px;margin:24px auto;padding:0 16px 60px}
+.panel,.reader{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 4px 18px #252b3d08}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button,.filelabel,select{border:1px solid var(--line);background:#fff;border-radius:11px;padding:10px 14px;font:inherit;color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.filelabel{display:inline-block}.filelabel input{display:none}
+select{max-width:100%}
+.progress{height:7px;background:#eeeef5;border-radius:99px;overflow:hidden;margin:12px 0 4px}.bar{height:100%;background:var(--accent);width:0;transition:width .2s}
+.meta{color:var(--muted);font-size:13px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-size:25px;line-height:1.35;margin:8px 0 4px}
+h2{font-size:16px;margin:0 0 12px}
+.reading{font-size:18px;line-height:2.15;letter-spacing:.1px}
+.word{color:var(--red);font-weight:800}
+.note{color:var(--muted);font-size:13px}
+.empty{padding:32px 12px;text-align:center;color:var(--muted)}
+footer{font-size:12px;color:var(--muted);text-align:center;padding:20px}
+#wordList{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#fff2f2;color:var(--red);border:1px solid #f4d7d7;border-radius:99px;padding:3px 10px;font-size:13px;font-weight:700}
+input[type=text]{border:1px solid var(--line);border-radius:10px;padding:10px;min-width:190px;font:inherit}
+@media(max-width:600px){main{margin:14px auto}.panel,.reader{padding:15px;border-radius:15px}.reading{font-size:17px}.top{padding:12px 15px}}
+</style>
+</head>
+<body>
+<header><div class="top"><div><div class="brand">📖 <span>阅读</span>记单词</div><div class="sub">把单词放进语境里，慢慢记住它</div></div><div class="sub">个人学习空间</div></div></header>
+<main>
+<section class="panel">
+ <div class="toolbar">
+  <label class="filelabel">导入单词表<input id="file" type="file" accept=".txt,.csv,.tsv"></label>
+  <button id="export">导出学习备份</button>
+  <label class="filelabel">恢复备份<input id="backup" type="file" accept=".json"></label>
+ </div>
+ <p class="note">支持 TXT / CSV / TSV。每行一个目标单词；也可使用“Unit, Lesson, word”三列格式。导入后会保留原始英文单词，不显示中文释义。</p>
+ <div class="toolbar">
+  <select id="unitSelect" aria-label="选择单元"></select>
+  <select id="lessonSelect" aria-label="选择课时"></select>
+  <button id="mark">标记为已读</button>
+ </div>
+ <div class="progress"><div class="bar" id="bar"></div></div>
+ <div class="meta"><span id="counter">加载中…</span><span id="saved">进度保存在当前浏览器</span></div>
+</section>
+<section class="reader">
+ <div class="meta"><span id="unitLabel">U1 · L1</span><span id="readState">未标记</span></div>
+ <h1 id="title">一座古老博物馆的新生</h1>
+ <div class="reading" id="article"></div>
+ <div class="toolbar" style="justify-content:space-between;margin-top:22px">
+  <button id="prev">← 上一篇</button><button class="primary" id="next">下一篇 →</button>
+ </div>
+</section>
+<section class="panel">
+ <h2>本篇目标单词</h2><div id="wordList"></div>
+ <p class="note">这里仅展示英文目标词，不附中文释义。导入新课时，请按每行一个单词整理；文章内容可在后续版本中继续扩充。</p>
+</section>
+<section class="panel">
+ <h2>关于学习记录</h2>
+ <p class="note">当前版本会把学习内容和阅读进度保存在这台设备、这个浏览器中。更换设备或清理浏览器数据前，请先导出备份。跨设备自动同步需要后续接入云端账号/数据库，并部署到固定网址。</p>
+</section>
+<footer>阅读记单词 · 测试版 1.0</footer>
+</main>
+<script>
+const seedWords = `ambition,act,action,actor,activate,active,hyperactivity,react,exact,actual,interact,enact,interplay,behave,conduct,semiconductor,direct,guidance,implement,antique,anticipate,participate,ancient,stale,refresh,flesh,renew,restore,store,storage,renovate,innovate,recur,incur,curb,steer,harness,dominate,domain,predominant,domestic,domestication,reign,sovereign,monarch,hierarchy,award,reward,awkward`.split(',');
+const seedArticle = [
+`很久以前，一位年轻人有着远大的 <b class="word">ambition</b>。他决定立刻 <b class="word">act</b>，把想法变成实际的 <b class="word">action</b>。他梦想成为一名 <b class="word">actor</b>，也希望自己的努力能够 <b class="word">activate</b> 更多人的热情。为了保持 <b class="word">active</b>，他每天安排训练，但有时会因为过度投入而显得 <b class="word">hyperactivity</b>。遇到意外情况时，他学着冷静 <b class="word">react</b>，并用 <b class="word">exact</b> 的标准检查每个细节。`,
+`后来，他发现真正的改变不只是表面现象，而是 <b class="word">actual</b> 的行动。他开始与同伴 <b class="word">interact</b>，一起讨论如何 <b class="word">enact</b> 新的计划。他们之间的 <b class="word">interplay</b> 让团队更有创造力；每个人都努力 <b class="word">behave</b> 得负责，并注意自己的言行和 <b class="word">conduct</b>。他们还邀请一位工程师介绍 <b class="word">semiconductor</b> 技术，由他 <b class="word">direct</b> 实验，并提供专业 <b class="word">guidance</b>，帮助大家 <b class="word">implement</b> 方案。`,
+`团队来到一座 <b class="word">antique</b> 展馆，提前 <b class="word">anticipate</b> 修复过程中可能出现的困难，并邀请志愿者 <b class="word">participate</b>。馆内收藏着许多 <b class="word">ancient</b> 文物，有些空气陈旧，甚至带着 <b class="word">stale</b> 的气味。大家先休息片刻，<b class="word">refresh</b> 精神，再仔细检查材料表面与内部的 <b class="word">flesh</b> 状结构。为了让展馆重新焕发生机，他们决定 <b class="word">renew</b> 展示方式、<b class="word">restore</b> 受损物件，并把珍贵藏品妥善 <b class="word">store</b> 在专门的 <b class="word">storage</b> 空间。`,
+`修复工作还包括 <b class="word">renovate</b> 展厅和 <b class="word">innovate</b> 展示技术。为了避免故障不断 <b class="word">recur</b>，团队评估可能 <b class="word">incur</b> 的费用，并设法 <b class="word">curb</b> 不必要的开支。项目负责人负责 <b class="word">steer</b> 整个进程，大家学会 <b class="word">harness</b> 新工具，而不是让某一种技术 <b class="word">dominate</b> 所有环节。每个 <b class="word">domain</b> 都有自己的规律，不能让单一方案成为唯一的 <b class="word">predominant</b> 选择。`,
+`最后，团队把成果应用到 <b class="word">domestic</b> 展览，并介绍人类对动物进行 <b class="word">domestication</b> 的历史。展览还讲述一位君主的 <b class="word">reign</b>，以及国家如何维护 <b class="word">sovereign</b> 权力。无论是 <b class="word">monarch</b> 还是其他管理者，都处在一定的 <b class="word">hierarchy</b> 体系中。展览开放后，团队获得了一个重要 <b class="word">award</b>，成员也收获了应有的 <b class="word">reward</b>。虽然筹备期间出现过几次 <b class="word">awkward</b> 的场面，但他们最终完成了目标。`
+].join('<br><br>');
+let data = JSON.parse(localStorage.getItem('vocabReaderData') || 'null') || [{unit:'U1',lesson:'L1',title:'一座古老博物馆的新生',words:seedWords,article:seedArticle,read:false}];
+let current=0;
+const $=id=>document.getElementById(id);
+function save(){localStorage.setItem('vocabReaderData',JSON.stringify(data));}
+function esc(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function render(){
+ const d=data[current]; if(!d)return;
+ $('unitLabel').textContent=d.unit+' · '+d.lesson;
+ $('title').textContent=d.title;
+ $('article').innerHTML=d.article;
+ $('wordList').innerHTML=d.words.map(w=>`<span class="chip">${esc(w)}</span>`).join('');
+ $('readState').textContent=d.read?'✓ 已读':'未标记';
+ $('mark').textContent=d.read?'取消已读':'标记为已读';
+ $('prev').disabled=current===0;$('next').disabled=current===data.length-1;
+ const units=[...new Set(data.map(x=>x.unit))];$('unitSelect').innerHTML=units.map(u=>`<option>${esc(u)}</option>`).join('');$('unitSelect').value=d.unit;
+ const lessons=data.filter(x=>x.unit===d.unit);$('lessonSelect').innerHTML=lessons.map(x=>`<option value="${esc(x.lesson)}">${esc(x.lesson)}</option>`).join('');$('lessonSelect').value=d.lesson;
+ const done=data.filter(x=>x.read).length;$('counter').textContent=`第 ${current+1} / ${data.length} 篇 · 已读 ${done} 篇`;
+ $('bar').style.width=(done/data.length*100)+'%';
+}
+$('prev').onclick=()=>{if(current>0){current--;render()}};
+$('next').onclick=()=>{if(current<data.length-1){current++;render()}};
+$('mark').onclick=()=>{data[current].read=!data[current].read;save();render()};
+$('unitSelect').onchange=e=>{const i=data.findIndex(x=>x.unit===e.target.value);if(i>=0){current=i;render()}};
+$('lessonSelect').onchange=e=>{const i=data.findIndex(x=>x.unit===data[current].unit&&x.lesson===e.target.value);if(i>=0){current=i;render()}};
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='阅读记单词-学习备份.json';a.click();URL.revokeObjectURL(a.href)};
+$('backup').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const parsed=JSON.parse(await f.text());if(!Array.isArray(parsed))throw Error();data=parsed;current=0;save();render();alert('备份恢复成功')}catch{alert('备份文件格式不正确')}e.target.value=''};
+$('file').onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;const txt=await f.text();
+ const lines=txt.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ let unit='自定义',lesson='L1',words=[];
+ for(const line of lines){const cols=line.split(/[,\t;]/).map(x=>x.trim());if(cols.length>=3&&/^U\d+/i.test(cols[0])){unit=cols[0];lesson=cols[1];if(cols[2]&&!/^(word|单词)$/i.test(cols[2]))words.push(cols[2])}else{const w=cols[cols.length-1];if(/^[a-zA-Z][a-zA-Z'-]*$/.test(w)&&!/^word$/i.test(w))words.push(w)}}
+ words=[...new Set(words)];if(!words.length){alert('没有识别到英文单词。请使用每行一个单词，或 Unit,Lesson,word 三列格式。');return}
+ const newLesson={unit,lesson,title:`${unit} ${lesson} · 阅读练习`,words,article:`你上传了 ${words.length} 个目标单词。当前版本已完成单词导入和分类展示；为了确保文章自然、准确且不漏词，文章生成部分将在后续版本接入。<br><br>目标词：${words.map(w=>`<b class="word">${esc(w)}</b>`).join('、')}`,read:false};
+ data.push(newLesson);current=data.length-1;save();render();alert(`成功导入 ${words.length} 个单词。`);e.target.value='';
+};
+render();
+</script>
+</body></html>
